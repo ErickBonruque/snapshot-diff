@@ -1,0 +1,49 @@
+{
+  "old_release": "2026-10-01",
+  "new_release": "2026-11-01",
+  "key": [
+    "cnpj_base",
+    "cnpj_order",
+    "cnpj_check"
+  ],
+  "old_rows": 73809379,
+  "new_rows": 74373417,
+  "inserted": 564038,
+  "updated": 947151,
+  "deleted": 0,
+  "changed_columns": {
+    "status_date": 667983,
+    "status_reason": 543814,
+    "registration_status": 542500,
+    "secondary_cnaes": 232985,
+    "main_cnae": 118003,
+    "municipality_code": 41932,
+    "trade_name": 36074,
+    "state": 12149,
+    "special_status_date": 840,
+    "special_status": 839,
+    "head_office": 175,
+    "activity_start_date": 82,
+    "foreign_city": 32,
+    "country_code": 7
+  },
+  "schema": {
+    "added": [],
+    "removed": [],
+    "retyped": []
+  },
+  "unchanged": 72862228,
+  "diff_seconds": 80.6,
+  "diff_peak_memory_mb": 3242,
+  "changes_file_mb": 33.5,
+  "history_apply_seconds": {
+    "2026-10-01": 21.9,
+    "2026-11-01": 368.8
+  },
+  "history_version_mb": {
+    "2026-10-01": 1262.0,
+    "2026-11-01": 25.7
+  },
+  "peak_memory_mb": 3269,
+  "memory_limit": "3GB"
+}
