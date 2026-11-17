@@ -54,6 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
     export.add_argument("history", help="history folder")
     export.add_argument("--as-of", type=date.fromisoformat, help="YYYY-MM-DD (default: current)")
     export.add_argument("--out", required=True, help="output Parquet file")
+    _engine_options(export)
 
     versions = actions.add_parser("versions", help="list the applied versions")
     versions.add_argument("history", help="history folder")
@@ -114,7 +115,9 @@ def run(args: argparse.Namespace) -> None:
         else:
             _print(applied.diff, args.json, time.perf_counter() - start)
     elif args.action == "export":
-        count = history.export(args.out, args.as_of)
+        count = history.export(
+            args.out, args.as_of, memory_limit=args.memory_limit, threads=args.threads
+        )
         print(f"wrote {count:,} rows to {args.out}")
     elif args.action == "versions":
         for version in history.versions():
