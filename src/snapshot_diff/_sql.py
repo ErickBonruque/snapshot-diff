@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import shutil
 import tempfile
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import duckdb
@@ -37,16 +39,25 @@ def parquet_source(source: Source) -> str:
     return f"read_parquet({literal(pattern)}, union_by_name = true, hive_partitioning = false)"
 
 
-def connect(
+@contextmanager
+def session(
     memory_limit: str | None = None, threads: int | None = None
-) -> duckdb.DuckDBPyConnection:
-    """In-memory DuckDB connection that can spill large joins to a temporary folder."""
+) -> Iterator[duckdb.DuckDBPyConnection]:
+    """In-memory DuckDB connection that can spill large joins to disk.
+
+    The spill folder is private to this run (``mkdtemp`` creates it with mode 0700) and is
+    deleted when the connection closes, because it can hold rows of the compared tables.
+    """
+    spill = tempfile.mkdtemp(prefix="snapshot-diff-")
     con = duckdb.connect()
-    spill = Path(tempfile.gettempdir()) / "snapshot-diff"
-    con.execute(f"SET temp_directory = {literal(str(spill))}")
-    con.execute("SET preserve_insertion_order = false")
-    if memory_limit:
-        con.execute(f"SET memory_limit = {literal(memory_limit)}")
-    if threads:
-        con.execute(f"SET threads = {int(threads)}")
-    return con
+    try:
+        con.execute(f"SET temp_directory = {literal(spill)}")
+        con.execute("SET preserve_insertion_order = false")
+        if memory_limit:
+            con.execute(f"SET memory_limit = {literal(memory_limit)}")
+        if threads:
+            con.execute(f"SET threads = {int(threads)}")
+        yield con
+    finally:
+        con.close()
+        shutil.rmtree(spill, ignore_errors=True)

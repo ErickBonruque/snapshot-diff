@@ -19,7 +19,7 @@ from pathlib import Path
 
 import duckdb
 
-from snapshot_diff._sql import Source, connect, ident, idents, literal, parquet_source
+from snapshot_diff._sql import Source, ident, idents, literal, parquet_source, session
 
 CHANGES_TABLE = "changes"
 
@@ -74,16 +74,13 @@ def diff(
     If ``output`` is given, the changed rows are written there as Parquet with the columns
     ``<key columns>, change_type, changed_columns, before, after``.
     """
-    con = connect(memory_limit, threads)
-    try:
+    with session(memory_limit, threads) as con:
         con.execute(f"CREATE VIEW _old_src AS SELECT * FROM {parquet_source(old)}")
         con.execute(f"CREATE VIEW _new_src AS SELECT * FROM {parquet_source(new)}")
         result = compare(con, "_old_src", "_new_src", key, ignore=ignore)
         if output is not None:
             write_changes(con, result.key, output)
         return result
-    finally:
-        con.close()
 
 
 def columns(con: duckdb.DuckDBPyConnection, relation: str) -> dict[str, str]:

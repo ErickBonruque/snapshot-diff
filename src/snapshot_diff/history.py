@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-from snapshot_diff._sql import Source, connect, idents, literal, parquet_source
+from snapshot_diff._sql import Source, idents, literal, parquet_source, session
 from snapshot_diff.diff import (
     CHANGES_TABLE,
     DiffResult,
@@ -127,8 +127,7 @@ class History:
         if stored is None:
             (self.path / META_FILE).write_text(json.dumps({"key": list(key)}, indent=2) + "\n")
 
-        con = connect(memory_limit, threads)
-        try:
+        with session(memory_limit, threads) as con:
             con.execute(f"CREATE VIEW _new_src AS SELECT * FROM {parquet_source(snapshot)}")
             current = self.current_sql() if versions else "SELECT * FROM _new_src LIMIT 0"
             con.execute(f"CREATE VIEW _old_src AS {current}")
@@ -160,25 +159,20 @@ class History:
             finally:
                 if staging.exists():
                     shutil.rmtree(staging)
-            return ApplyResult(as_of, applied=True, diff=result)
-        finally:
-            con.close()
+        return ApplyResult(as_of, applied=True, diff=result)
 
     def export(self, output: Source, when: date | None = None) -> int:
         """Write the table on ``when`` (or the current table) to Parquet; return the row count."""
         sql = self.as_of_sql(when) if when else self.current_sql()
         path = Path(output)
         path.parent.mkdir(parents=True, exist_ok=True)
-        con = connect()
-        try:
+        with session() as con:
             con.execute(
                 f"COPY ({sql} ORDER BY {idents(self._require_key())}) "
                 f"TO {literal(str(path))} (FORMAT parquet, COMPRESSION zstd)"
             )
             fetched = con.execute(f"SELECT count(*) FROM {parquet_source(path)}").fetchone()
-            return int(fetched[0]) if fetched else 0
-        finally:
-            con.close()
+        return int(fetched[0]) if fetched else 0
 
     def _require_key(self) -> tuple[str, ...]:
         key = self.key
