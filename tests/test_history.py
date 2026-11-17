@@ -129,3 +129,11 @@ def test_export(history: History, tmp_path: Path) -> None:
     assert history.export(tmp_path / "oct.parquet", OCT) == 2
     assert history.export(tmp_path / "now.parquet") == 2
     assert query(f"SELECT id FROM '{tmp_path / 'oct.parquet'}'") == [{"id": 1}, {"id": 2}]
+
+
+def test_first_version_checks_the_key(tmp_path: Path, parquet: WriteParquet) -> None:
+    duplicated = parquet("dup.parquet", SCHEMA, [{"id": 1}, {"id": 1}])
+
+    with pytest.raises(SnapshotDiffError, match="not unique"):
+        History(tmp_path / "h").apply(duplicated, ["id"], OCT)
+    assert History(tmp_path / "h").versions() == []

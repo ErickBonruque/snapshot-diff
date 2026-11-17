@@ -249,6 +249,21 @@ def _check_columns(
         raise SnapshotDiffError(f"column(s) {overlap} cannot be both key and ignored")
 
 
+def validate_key(
+    con: duckdb.DuckDBPyConnection, relation: str, key: Sequence[str], side: str
+) -> int:
+    """Check that ``key`` exists, is never NULL and is unique; return the row count."""
+    key = tuple(key)
+    missing = [k for k in key if k not in columns(con, relation)]
+    if missing:
+        raise SnapshotDiffError(f"key column(s) {missing} not found in the {side} snapshot")
+    con.execute(f"CREATE OR REPLACE TEMP TABLE _keys AS SELECT {idents(key)} FROM {relation}")
+    _check_keys(con, "_keys", key, side)
+    rows = _scalar(con, "SELECT count(*) FROM _keys")
+    con.execute("DROP TABLE _keys")
+    return rows
+
+
 def _check_keys(
     con: duckdb.DuckDBPyConnection, table: str, key: tuple[str, ...], side: str
 ) -> None:
